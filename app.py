@@ -36,6 +36,20 @@ df = load_data()
 # =============================================================
 st.markdown("""
     <style>
+    /* ======== FORCE GLOBAL DARK THEME ======== */
+    [data-testid="stAppViewContainer"], [data-testid="stAppViewContainer"] > section > div:first-child { 
+        background-color: #010408 !important; 
+    }
+    [data-testid="stHeader"] { 
+        background: transparent !important; 
+    }
+    [data-testid="stSidebar"], [data-testid="stSidebar"] > div:first-child { 
+        background-color: #030811 !important; 
+    }
+    .stMarkdown p, .stMarkdown span, div[data-testid="stRadio"] p, div[data-testid="stRadio"] label { 
+        color: #eceff1 !important; 
+    }
+
     /* === General Layout === */
     .main {
         background: radial-gradient(circle at top left, #001219 0%, #000000 80%);
@@ -457,7 +471,7 @@ st.sidebar.markdown(
 # PAGE 1: HOME (Machine Learning Model — Premium Redesign)
 # =============================================================
 if page == "🏠 Home":
-    st.markdown("""
+    st.markdown('''
         <style>
         /* ======== BACKGROUND ANIMATION ======== */
         @keyframes gradientFlow {
@@ -472,71 +486,99 @@ if page == "🏠 Home":
 
         /* ======== HERO SECTION ======== */
         .hero {
-            background: linear-gradient(-45deg, #001219, #003049, #0a9396, #00b4d8, #48cae4);
+            background: linear-gradient(-45deg, #001219, #003049, #0a9396, #00b4d8);
             background-size: 400% 400%;
             animation: gradientFlow 10s ease infinite;
-            padding: 60px 40px;
+            padding: 50px 40px;
             border-radius: 20px;
-            box-shadow: 0px 0px 40px rgba(0, 180, 216, 0.25);
+            box-shadow: 0px 0px 30px rgba(0, 180, 216, 0.25);
             text-align: center;
             color: #e0fbfc;
             margin-bottom: 30px;
         }
         .hero h1 {
-            font-size: 3.2em;
-            font-weight: 700;
+            font-size: 3em;
+            font-weight: 800;
             color: #caf0f8;
             text-shadow: 0 0 25px #00b4d8, 0 0 45px #0077b6;
             animation: fadeInUp 1.2s ease;
+            margin-bottom: 10px;
         }
         .hero p {
             color: #dee2e6;
             font-size: 18px;
-            margin-top: 15px;
+            margin-top: 10px;
             line-height: 1.6;
             animation: fadeInUp 1.8s ease;
         }
 
         /* ======== METRIC CARDS ======== */
         .metric-card {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(0, 180, 216, 0.25);
+            background: linear-gradient(145deg, rgba(5, 10, 15, 0.95), rgba(0, 5, 10, 0.95));
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(0, 234, 255, 0.15);
             border-radius: 16px;
-            padding: 25px;
+            padding: 20px;
             text-align: center;
             color: #fff;
             transition: all 0.4s ease;
             animation: fadeInUp 2s ease;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8), 0 4px 15px rgba(0, 0, 0, 0.6);
         }
         .metric-card:hover {
             transform: translateY(-8px);
-            box-shadow: 0 0 30px rgba(0, 180, 216, 0.35);
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8), 0 0 30px rgba(0, 234, 255, 0.3);
+            border: 1px solid rgba(0, 234, 255, 0.4);
+            background: linear-gradient(145deg, rgba(5, 15, 25, 0.95), rgba(0, 10, 20, 0.95));
         }
         .metric-title {
-            font-size: 18px;
+            font-size: 16px;
             color: #90e0ef;
+            margin-top: 5px;
         }
         .metric-value {
-            font-size: 2em;
+            font-size: 2.2em;
             font-weight: bold;
         }
 
-        /* ======== ABOUT SECTION ======== */
-        .about-section {
+        /* ======== FUNCTIONAL SECTION ======== */
+        .func-section {
+            background: #060b11;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 30px;
+            margin-top: 30px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
+            animation: fadeInUp 2.2s ease;
+        }
+        .func-title {
+            color: #ffffff;
+            font-size: 24px;
+            font-weight: 800;
+            margin-bottom: 20px;
             text-align: center;
-            color: #adb5bd;
-            padding: 30px 10px;
-            animation: fadeInUp 2.3s ease;
         }
-        .about-section h3 {
-            color: #00b4d8;
-            font-size: 1.8em;
-            margin-bottom: 10px;
+        
+        .feature-item {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            border-left: 4px solid #00eaff;
+            padding: 18px 20px;
+            border-radius: 10px;
+            margin-bottom: 18px;
+            transition: 0.3s ease;
         }
-        .about-section p {
+        .feature-item:hover {
+            background: rgba(255, 255, 255, 0.07);
+            border-left: 4px solid #ffffff;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
+        }
+        .feature-title {
+            color: #ffffff;
+            font-weight: 700;
             font-size: 17px;
-            line-height: 1.7;
+            margin-bottom: 5px;
         }
 
         /* ======== DIVIDER ======== */
@@ -551,90 +593,130 @@ if page == "🏠 Home":
 
         /* ======== FOOTER ======== */
         .footer {
+            background: linear-gradient(180deg, rgba(2, 8, 12, 0.95), rgba(0, 0, 0, 0.98));
+            border: 1px solid rgba(0, 234, 255, 0.1);
+            border-top: 1px solid #00eaff;
+            border-radius: 12px;
+            padding: 20px;
             text-align: center;
-            color: gray;
-            font-size: 14px;
-            margin-top: 30px;
-            animation: fadeInUp 2.6s ease;
+            color: #b0bec5;
+            font-size: 15px;
+            margin-top: 40px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            animation: fadeInUp 2.5s ease;
         }
         .footer b {
-            color: #00b4d8;
+            color: #00eaff;
+        }
+
+        /* ======== SELECT BOX STYLING ======== */
+        div[data-testid="stSelectbox"] > div:first-child > div[data-baseweb="select"] > div {
+            background-color: #030811 !important;
+            border: 1px solid rgba(0, 234, 255, 0.3) !important;
+            border-radius: 8px !important;
+            transition: all 0.3s ease !important;
+        }
+        div[data-testid="stSelectbox"] > div:first-child > div[data-baseweb="select"] > div:hover {
+            border: 1px solid rgba(0, 234, 255, 0.8) !important;
+            box-shadow: 0 0 10px rgba(0, 234, 255, 0.2) !important;
+        }
+        div[data-testid="stSelectbox"] label p {
+            color: #cfd8dc !important;
+            font-size: 15px !important;
+            font-weight: 600 !important;
+            letter-spacing: 0.5px;
         }
         </style>
-    """, unsafe_allow_html=True)
+    ''', unsafe_allow_html=True)
 
     # 🌌 Hero Section
-    st.markdown("""
+    st.markdown('''
         <div class="hero">
-            <h1>🤖 Car Price Prediction Using Machine Learning Model</h1>
+            <h1>Intelligence on Wheels 🚗💨</h1>
             <p>
-                Experience the fusion of <b>AI</b> and <b>Data Science</b> to predict accurate car resale values.<br>
-                Trained using <b>Linear Regression</b> on real-world datasets to ensure precision and reliability.
+                Experience the next generation of <b>Car Price Prediction</b>.<br>
+                Powered by <b>Machine Learning</b>, trained on vast market data to give you the exact value you deserve.
             </p>
         </div>
-    """, unsafe_allow_html=True)
+    ''', unsafe_allow_html=True)
 
-    # 🚘 Hero Image
-    st.image(
-        "https://cdni.iconscout.com/illustration/premium/thumb/car-price-prediction-7806707-6327847.png",
-        use_container_width=True,
-        caption="AI-powered Machine Learning model for intelligent car price prediction 🚗"
-    )
-
-    # 📊 Dataset Overview
-    st.markdown("<h3 style='text-align:center; color:#00b4d8; margin-top:35px;'>📈 Dataset Overview</h3>", unsafe_allow_html=True)
+    # 📊 Dynamic Metrics
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.markdown(f"""
+        st.markdown(f'''
             <div class='metric-card'>
-                <div class='metric-value' style='color:#00b4d8;'>{df.shape[0]}</div>
-                <div class='metric-title'>Total Records</div>
-                <p style='font-size:13px; color:#adb5bd;'>Cars analyzed for training</p>
+                <div class='metric-value' style='color:#00eaff;'>{df.shape[0]}+</div>
+                <div class='metric-title'>Market Records</div>
             </div>
-        """, unsafe_allow_html=True)
+        ''', unsafe_allow_html=True)
     with col2:
-        st.markdown(f"""
+        st.markdown(f'''
             <div class='metric-card'>
-                <div class='metric-value' style='color:#06d6a0;'>{df['company'].nunique()}</div>
-                <div class='metric-title'>Car Brands</div>
-                <p style='font-size:13px; color:#adb5bd;'>Unique manufacturers studied</p>
+                <div class='metric-value' style='color:#06d6a0;'>{df["company"].nunique()}</div>
+                <div class='metric-title'>Top Brands</div>
             </div>
-        """, unsafe_allow_html=True)
+        ''', unsafe_allow_html=True)
     with col3:
-        st.markdown(f"""
+        avg_market_price = df['Price'].mean()
+        st.markdown(f'''
             <div class='metric-card'>
-                <div class='metric-value' style='color:#f9c74f;'>{df['fuel_type'].nunique()}</div>
-                <div class='metric-title'>Fuel Variants</div>
-                <p style='font-size:13px; color:#adb5bd;'>Petrol, Diesel, Electric, and more</p>
+                <div class='metric-value' style='color:#f9c74f;'>₹ {avg_market_price/100000:.1f} Lakh</div>
+                <div class='metric-title'>Avg Market Value</div>
             </div>
-        """, unsafe_allow_html=True)
+        ''', unsafe_allow_html=True)
 
     # ✨ Divider
     st.markdown("<hr class='glow-line'>", unsafe_allow_html=True)
 
-    # 💡 About Section
-    st.markdown("""
-        <div class='about-section'>
-            <h3>💡 About This Machine Learning Model</h3>
-            <p>
-                This advanced model uses <b>Linear Regression</b> to predict car resale prices based on brand, year, fuel type, and more.<br>
-                By analyzing thousands of records, it provides accurate, data-driven insights to support smart decisions.
-            </p>
-        </div>
-    """, unsafe_allow_html=True)
+    # ⚡ NEW FUNCTIONALITY: Quick Brand Lookup & App Features
+    colA, colB = st.columns([1.2, 1])
+    
+    with colA:
+        st.markdown("<h3 style='color:#00eaff; text-align:center; font-weight:800; margin-bottom:10px;'>🔍 Quick Brand Insight</h3>", unsafe_allow_html=True)
+        st.markdown("<p style='color:#b0bec5; font-size:16px; font-weight:400; line-height:1.5; margin-bottom:20px; text-align:center;'>Select a car brand to instantly view its <b style='color:#ffffff;'>average resale price</b> in the current market.</p>", unsafe_allow_html=True)
+        
+        brands = sorted(df['company'].unique())
+        selected_brand = st.selectbox("Choose a Brand:", brands, index=brands.index("Hyundai") if "Hyundai" in brands else 0)
+        
+        brand_data = df[df['company'] == selected_brand]
+        brand_avg_price = brand_data['Price'].mean()
+        brand_max_price = brand_data['Price'].max()
+        
+        st.markdown(f'''
+            <div style='background: #02060b; border: 1px solid rgba(0, 234, 255, 0.15); border-radius: 16px; padding: 30px; margin-top: 25px; text-align:center; box-shadow: 0 8px 25px rgba(0,0,0,0.8);'>
+                <p style='color:#b0bec5; font-size:17px; margin:0; font-weight: 500;'>Average Market Value for <span style='color:#00eaff; font-weight:bold;'>{selected_brand}</span></p>
+                <h2 style='color:#ffffff; font-size: 38px; margin:15px 0 15px 0; font-weight: 800; text-shadow: 0 0 10px rgba(0, 234, 255, 0.3);'>₹ {brand_avg_price:,.0f}</h2>
+                <div style='display: inline-block; background: rgba(0, 234, 255, 0.1); border: 1px solid rgba(0, 234, 255, 0.3); padding: 8px 20px; border-radius: 20px; color:#cfd8dc; font-size:15px; font-weight:600; box-shadow: inset 0 0 10px rgba(0, 234, 255, 0.1);'>Top Model Price: <b style='color:#fff;'>₹ {brand_max_price:,.0f}</b></div>
+            </div>
+        ''', unsafe_allow_html=True)
 
-    # 🌟 Footer (Updated)
-    st.markdown("""
+    with colB:
+        st.markdown('''
+        <div class='func-section'>
+            <div class='func-title'>🚀 What's Inside</div>
+            <div class='feature-item'>
+                <div class='feature-title'>📊 EDA Dashboard</div>
+                <div style='color:#b0bec5; font-size:15px; line-height: 1.5;'>Deep dive into dataset visualizations and market trends.</div>
+            </div>
+            <div class='feature-item'>
+                <div class='feature-title'>💰 Price Prediction</div>
+                <div style='color:#b0bec5; font-size:15px; line-height: 1.5;'>Get real-time ML estimates based on year, brand, and usage.</div>
+            </div>
+            <div class='feature-item'>
+                <div class='feature-title'>⚡ Ultra Fast & Accurate</div>
+                <div style='color:#b0bec5; font-size:15px; line-height: 1.5;'>Powered by Sklearn optimized Linear Regression models.</div>
+            </div>
+        </div>
+        ''', unsafe_allow_html=True)
+
+    # 🌟 Footer
+    st.markdown('''
         <div class='footer'>
-            Developed by a <b>Data Science Enthusiast</b> 💻<br>
-            Powered by <b>Machine Learning</b> & <b>Streamlit</b> ⚙️<br>
-            © 2025 Car Price Prediction Project
+            <span style='font-size: 16px;'>Developed by a <b>Data Science Enthusiast</b> 💻</span><br>
+            <span style='font-size: 14px; margin-top: 8px; display: inline-block;'>Powered by <b>Machine Learning</b> & <b>Streamlit</b> ⚙️</span><br>
+            <span style='font-size: 13px; color: #546e7a; margin-top: 5px; display: inline-block;'>© 2025 Car Price Prediction Project</span>
         </div>
-    """, unsafe_allow_html=True)
-
-# =============================================================
-# PAGE 2: EDA DASHBOARD (Next-Gen Futuristic Edition)
-# =============================================================
+    ''', unsafe_allow_html=True)
 elif page == "📊 EDA Dashboard":
     # 🌌 Custom CSS for theme and animations
     st.markdown("""
@@ -652,25 +734,36 @@ elif page == "📊 EDA Dashboard":
             animation: fadeInUp 1s ease;
         }
         .metric-box {
-            background: linear-gradient(135deg, #001219, #003049);
-            border: 1px solid rgba(0,180,216,0.3);
-            border-radius: 12px;
+            background: #02060b;
+            border: 1px solid rgba(0, 234, 255, 0.15);
+            border-radius: 14px;
             text-align: center;
             padding: 20px;
-            color: #e0e0e0;
+            color: #ffffff;
             animation: fadeInUp 1.5s ease;
             transition: 0.3s ease;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.6);
         }
         .metric-box:hover {
             transform: translateY(-6px);
-            animation: glowPulse 1.5s infinite ease-in-out;
+            border: 1px solid rgba(0, 234, 255, 0.5);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.8), inset 0 0 15px rgba(0, 234, 255, 0.1);
         }
         .metric-box h3 {
-            color: #00b4d8;
+            color: #00eaff;
+            font-weight: 800;
             margin-bottom: 5px;
+            font-size: 28px;
+        }
+        .metric-box p {
+            color: #b0bec5;
+            font-weight: 500;
+            margin: 0;
+            font-size: 15px;
         }
         .tab-content {
             animation: fadeInUp 1.2s ease;
+            padding-top: 15px;
         }
         .footer {
             text-align: center;
@@ -682,21 +775,44 @@ elif page == "📊 EDA Dashboard":
     """, unsafe_allow_html=True)
 
     # 🧭 Dashboard Header
-    st.markdown("<h1 style='text-align:center; color:#00b4d8;'>📊 Car Data Insights Dashboard</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align:center; color:#b0bec5;'>Explore dynamic data trends, pricing analysis, and brand performance insights — all powered by Machine Learning intelligence.</p>", unsafe_allow_html=True)
-    st.markdown("<hr style='border: 1px solid #2a2a2a;'>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align:center; color:#00eaff;'>📊 Advanced Analytics Dashboard</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align:center; color:#b0bec5; margin-bottom:25px;'>Uncover hidden patterns, pricing dynamics, and market trends with real-time interactive filtering.</p>", unsafe_allow_html=True)
+    
+    # 🎛️ Interactive Filter Panel
+    with st.container():
+        st.markdown("<h4 style='color:#ffffff; border-bottom:1px solid rgba(0,234,255,0.2); padding-bottom:10px; margin-bottom:15px;'>🎛️ Dynamic Data Filters</h4>", unsafe_allow_html=True)
+        f_col1, f_col2, f_col3 = st.columns(3)
+        with f_col1:
+            all_brands = sorted(df['company'].unique())
+            selected_brands_filter = st.multiselect("Select Brands:", all_brands, default=[], placeholder="All Brands")
+        with f_col2:
+            min_yr, max_yr = int(df['year'].min()), int(df['year'].max())
+            selected_years_filter = st.slider("Select Year Range:", min_value=min_yr, max_value=max_yr, value=(min_yr, max_yr))
+        with f_col3:
+            all_fuels = sorted(df['fuel_type'].unique())
+            selected_fuels_filter = st.multiselect("Select Fuel Type:", all_fuels, default=[], placeholder="All Fuel Types")
+
+        # 🔄 Filter Application Logic
+        filtered_df = df.copy()
+        if selected_brands_filter:
+            filtered_df = filtered_df[filtered_df['company'].isin(selected_brands_filter)]
+        filtered_df = filtered_df[(filtered_df['year'] >= selected_years_filter[0]) & (filtered_df['year'] <= selected_years_filter[1])]
+        if selected_fuels_filter:
+            filtered_df = filtered_df[filtered_df['fuel_type'].isin(selected_fuels_filter)]
+            
+    st.markdown("<br>", unsafe_allow_html=True)
 
     # ⚙️ KPI Metrics
-    st.subheader("📈 Dataset Highlights")
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.markdown(f"<div class='metric-box'><h3>{df.shape[0]}</h3><p>Total Records</p></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='metric-box'><h3>{filtered_df.shape[0]}</h3><p>Total Records</p></div>", unsafe_allow_html=True)
     with col2:
-        st.markdown(f"<div class='metric-box'><h3>{df['company'].nunique()}</h3><p>Unique Brands</p></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='metric-box'><h3>{filtered_df['company'].nunique()}</h3><p>Unique Brands</p></div>", unsafe_allow_html=True)
     with col3:
-        st.markdown(f"<div class='metric-box'><h3>{df['fuel_type'].nunique()}</h3><p>Fuel Types</p></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='metric-box'><h3>{filtered_df['fuel_type'].nunique()}</h3><p>Fuel Types</p></div>", unsafe_allow_html=True)
     with col4:
-        st.markdown(f"<div class='metric-box'><h3>{df['year'].min()} - {df['year'].max()}</h3><p>Year Range</p></div>", unsafe_allow_html=True)
+        avg_price = filtered_df['Price'].mean() if not filtered_df.empty else 0
+        st.markdown(f"<div class='metric-box'><h3>₹ {avg_price/100000:.1f}L</h3><p>Avg Market Value</p></div>", unsafe_allow_html=True)
 
     st.markdown("<hr style='border: 1px solid #2a2a2a;'>", unsafe_allow_html=True)
 
@@ -711,76 +827,85 @@ elif page == "📊 EDA Dashboard":
     # 💰 PRICE DISTRIBUTION
     with tab1:
         st.markdown("<div class='tab-content'>", unsafe_allow_html=True)
-        st.subheader("💰 Car Price Distribution")
-        fig = px.histogram(
-            df, x="Price", nbins=40, color_discrete_sequence=["#00b4d8"],
-            title="Distribution of Car Prices (₹)"
-        )
-        fig.update_layout(
-            plot_bgcolor="#0e1117", paper_bgcolor="#0e1117",
-            font_color="white", title_font_color="#00b4d8"
-        )
-        st.plotly_chart(fig, use_container_width=True)
-        st.caption("📊 Most cars fall between ₹3–₹10 lakh — the sweet spot for Indian resale markets.")
+        st.markdown("<h3 style='color:#00eaff; margin-bottom:10px;'>💰 Car Price Distribution</h3>", unsafe_allow_html=True)
+        if not filtered_df.empty:
+            fig = px.histogram(
+                filtered_df, x="Price", nbins=40, color_discrete_sequence=["#00eaff"],
+                title="Distribution of Car Prices (₹)"
+            )
+            fig.update_layout(
+                plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
+                font_color="white", title_font_color="#00eaff"
+            )
+            st.plotly_chart(fig, use_container_width=True)
+            st.caption("📊 Visualizing where the majority of vehicle resale values cluster in the market.")
+        else:
+            st.warning("⚠️ No data available for selected filters.")
         st.markdown("</div>", unsafe_allow_html=True)
 
     # 📅 YEARLY PRICE TREND
     with tab2:
         st.markdown("<div class='tab-content'>", unsafe_allow_html=True)
-        st.subheader("📅 Average Price Trend Over the Years")
-        year_trend = df.groupby("year")["Price"].mean().reset_index()
-        fig2 = px.line(
-            year_trend, x="year", y="Price", markers=True,
-            color_discrete_sequence=["#00b4d8"],
-            title="Average Car Price by Manufacturing Year"
-        )
-        fig2.update_traces(line=dict(width=3))
-        fig2.update_layout(
-            plot_bgcolor="#0e1117", paper_bgcolor="#0e1117",
-            font_color="white", title_font_color="#00b4d8"
-        )
-        st.plotly_chart(fig2, use_container_width=True)
-        st.caption("📈 Newer cars command higher prices due to advanced tech and improved safety.")
+        st.markdown("<h3 style='color:#00eaff; margin-bottom:10px;'>📅 Average Price Trend Over the Years</h3>", unsafe_allow_html=True)
+        if not filtered_df.empty:
+            year_trend = filtered_df.groupby("year")["Price"].mean().reset_index()
+            fig2 = px.line(
+                year_trend, x="year", y="Price", markers=True,
+                color_discrete_sequence=["#00eaff"],
+                title="Average Car Price by Manufacturing Year"
+            )
+            fig2.update_traces(line=dict(width=3, color='#00eaff'), marker=dict(size=8, color='#ffffff'))
+            fig2.update_layout(
+                plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
+                font_color="white", title_font_color="#00eaff"
+            )
+            st.plotly_chart(fig2, use_container_width=True)
+            st.caption("📈 Shows how vehicle depreciation or appreciation maps across manufacturing years.")
+        else:
+            st.warning("⚠️ No data available for selected filters.")
         st.markdown("</div>", unsafe_allow_html=True)
 
     # 🚘 TOP MODELS
     with tab3:
         st.markdown("<div class='tab-content'>", unsafe_allow_html=True)
-        st.subheader("🚘 Top 5 Car Models by Average Resale Price")
-        if "name" in df.columns:
-            top_models = df.groupby("name")["Price"].mean().nlargest(5).reset_index()
+        st.markdown("<h3 style='color:#00eaff; margin-bottom:10px;'>🚘 Top 5 Car Models by Average Resale Price</h3>", unsafe_allow_html=True)
+        if not filtered_df.empty and "name" in filtered_df.columns:
+            top_models = filtered_df.groupby("name")["Price"].mean().nlargest(5).reset_index()
             fig3 = px.bar(
                 top_models, x="name", y="Price", text="Price",
-                color="Price", color_continuous_scale="Viridis",
+                color="Price", color_continuous_scale="Teal",
                 title="Top Performing Car Models"
             )
             fig3.update_traces(texttemplate="₹%{text:.0f}", textposition="outside")
             fig3.update_layout(
-                plot_bgcolor="#0e1117", paper_bgcolor="#0e1117",
-                font_color="white", title_font_color="#00b4d8"
+                plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
+                font_color="white", title_font_color="#00eaff"
             )
             st.plotly_chart(fig3, use_container_width=True)
+            st.caption("💎 Detailed view of the premium segment variants driving maximum resale values.")
         else:
-            st.warning("⚠️ Column 'name' not found in dataset.")
-        st.caption("💎 Luxury and premium variants dominate high resale value segments.")
+            st.warning("⚠️ Not enough data to generate chart.")
         st.markdown("</div>", unsafe_allow_html=True)
 
     # ⛽ FUEL INSIGHTS
     with tab4:
         st.markdown("<div class='tab-content'>", unsafe_allow_html=True)
-        st.subheader("⛽ Fuel Type Market Share")
-        fig4 = px.pie(
-            df, names="fuel_type", hole=0.4,
-            title="Fuel Type Distribution",
-            color_discrete_sequence=px.colors.sequential.Agsunset
-        )
-        fig4.update_traces(textinfo="percent+label", pull=[0.05, 0.05, 0, 0])
-        fig4.update_layout(
-            plot_bgcolor="#0e1117", paper_bgcolor="#0e1117",
-            font_color="white", title_font_color="#00b4d8"
-        )
-        st.plotly_chart(fig4, use_container_width=True)
-        st.caption("⚡ Petrol dominates the market, while EVs are emerging as future contenders.")
+        st.markdown("<h3 style='color:#00eaff; margin-bottom:10px;'>⛽ Fuel Type Market Share</h3>", unsafe_allow_html=True)
+        if not filtered_df.empty:
+            fig4 = px.pie(
+                filtered_df, names="fuel_type", hole=0.4,
+                title="Fuel Type Distribution",
+                color_discrete_sequence=['#00eaff', '#0077b6', '#48cae4', '#90e0ef']
+            )
+            fig4.update_traces(textinfo="percent+label", pull=[0.05, 0.05, 0, 0])
+            fig4.update_layout(
+                plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
+                font_color="white", title_font_color="#00eaff"
+            )
+            st.plotly_chart(fig4, use_container_width=True)
+            st.caption("⚡ Analyzing the dominance of different powertrain technologies in the current market.")
+        else:
+            st.warning("⚠️ No data available for selected filters.")
         st.markdown("</div>", unsafe_allow_html=True)
 
     # ✨ Footer
@@ -893,14 +1018,15 @@ elif page == "💰 Price Prediction":
     st.subheader("🚘 Enter Car Information")
     st.markdown("<div class='input-card'>", unsafe_allow_html=True)
 
-    car_names = sorted(df['name'].unique())
     companies = sorted(df['company'].unique())
     fuel_types = sorted(df['fuel_type'].unique())
 
     col1, col2 = st.columns(2)
     with col1:
-        name = st.selectbox("Car Model Name", car_names)
         company = st.selectbox("Car Brand", companies)
+        # Dynamically filter car models based on the selected brand
+        valid_car_names = sorted(df[df['company'] == company]['name'].unique())
+        name = st.selectbox("Car Model Name", valid_car_names)
         year = st.number_input("Year of Purchase", min_value=1995, max_value=2025, value=2019)
     with col2:
         kms_driven = st.number_input("Kilometers Driven", min_value=0, max_value=500000, value=100)
@@ -910,40 +1036,40 @@ elif page == "💰 Price Prediction":
     st.markdown("<br>", unsafe_allow_html=True)
 
     # 🚀 Predict Button
-predict = st.button("🚀 Predict Price", use_container_width=True)
+    predict = st.button("🚀 Predict Price", use_container_width=True)
 
-if predict:
-    try:
-        input_df = pd.DataFrame([{
-            'name': name,
-            'company': company,
-            'year': year,
-            'kms_driven': kms_driven,
-            'fuel_type': fuel_type
-        }])
+    if predict:
+        try:
+            input_df = pd.DataFrame([{
+                'name': name,
+                'company': company,
+                'year': year,
+                'kms_driven': kms_driven,
+                'fuel_type': fuel_type
+            }])
 
-        # ✅ Direct prediction (no encoding)
-        predicted_price = pipe.predict(input_df)[0]
+            # ✅ Direct prediction (no encoding)
+            predicted_price = pipe.predict(input_df)[0]
 
-        import random
-        confidence = random.randint(82, 97)
+            import random
+            confidence = random.randint(82, 97)
 
-        st.markdown(f"""
-            <div class='result-box'>
-                💰 Predicted Car Price:<br><b>₹ {predicted_price:,.0f}</b>
-            </div>
-        """, unsafe_allow_html=True)
+            st.markdown(f"""
+                <div class='result-box'>
+                    💰 Predicted Car Price:<br><b>₹ {predicted_price:,.0f}</b>
+                </div>
+            """, unsafe_allow_html=True)
 
-        st.markdown(f"""
-            <p style='text-align:center; color:#b0bec5; font-size:17px; margin-top:15px;'>
-                🔍 Model Confidence: <b>{confidence}%</b>
-            </p>
-        """, unsafe_allow_html=True)
+            st.markdown(f"""
+                <p style='text-align:center; color:#b0bec5; font-size:17px; margin-top:15px;'>
+                    🔍 Model Confidence: <b>{confidence}%</b>
+                </p>
+            """, unsafe_allow_html=True)
 
-        st.progress(confidence / 100)
+            st.progress(confidence / 100)
 
-    except Exception as e:
-        st.error(f"❌ Error: {e}")
+        except Exception as e:
+            st.error(f"❌ Error: {e}")
 
     st.markdown("<br>", unsafe_allow_html=True)
 
