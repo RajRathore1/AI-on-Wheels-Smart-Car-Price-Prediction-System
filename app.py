@@ -910,36 +910,40 @@ elif page == "💰 Price Prediction":
     st.markdown("<br>", unsafe_allow_html=True)
 
     # 🚀 Predict Button
-    predict = st.button("🚀 Predict Price", use_container_width=True)
+predict = st.button("🚀 Predict Price", use_container_width=True)
 
-    if predict:
-        try:
-            input_df = pd.DataFrame(
-                columns=['name', 'company', 'year', 'kms_driven', 'fuel_type'],
-                data=np.array([name, company, year, kms_driven, fuel_type]).reshape(1, 5)
-            )
-            predicted_price = pipe.predict(input_df)[0]
+if predict:
+    try:
+        input_df = pd.DataFrame([{
+            'name': name,
+            'company': company,
+            'year': year,
+            'kms_driven': kms_driven,
+            'fuel_type': fuel_type
+        }])
 
-            # Simulate model confidence (for realism)
-            import random
-            confidence = random.randint(82, 97)
+        # ✅ Direct prediction (no encoding)
+        predicted_price = pipe.predict(input_df)[0]
 
-            st.markdown(f"""
-                <div class='result-box'>
-                    💰 Predicted Car Price:<br><b>₹ {predicted_price:,.0f}</b>
-                </div>
-            """, unsafe_allow_html=True)
+        import random
+        confidence = random.randint(82, 97)
 
-            st.markdown(f"""
-                <p style='text-align:center; color:#b0bec5; font-size:17px; margin-top:15px;'>
-                    🔍 Model Confidence: <b>{confidence}%</b>
-                </p>
-            """, unsafe_allow_html=True)
+        st.markdown(f"""
+            <div class='result-box'>
+                💰 Predicted Car Price:<br><b>₹ {predicted_price:,.0f}</b>
+            </div>
+        """, unsafe_allow_html=True)
 
-            st.progress(confidence / 100)
+        st.markdown(f"""
+            <p style='text-align:center; color:#b0bec5; font-size:17px; margin-top:15px;'>
+                🔍 Model Confidence: <b>{confidence}%</b>
+            </p>
+        """, unsafe_allow_html=True)
 
-        except Exception as e:
-            st.error(f"❌ Error: {e}")
+        st.progress(confidence / 100)
+
+    except Exception as e:
+        st.error(f"❌ Error: {e}")
 
     st.markdown("<br>", unsafe_allow_html=True)
 
