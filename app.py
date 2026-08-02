@@ -7,6 +7,9 @@ import pandas as pd
 import numpy as np
 import pickle
 import plotly.express as px
+from PIL import Image
+
+from condition_assessment import assess_condition, condition_label
 
 # =============================================================
 # PAGE CONFIGURATION
@@ -1035,6 +1038,31 @@ elif page == "💰 Price Prediction":
     st.markdown("</div>", unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
 
+    # 📸 Condition Assessment (optional photo upload)
+    st.subheader("📸 Upload a Car Photo (optional)")
+    st.caption("Upload a photo of the car to automatically detect visible damage and adjust the predicted price for its condition.")
+    uploaded_image = st.file_uploader("Car photo", type=["jpg", "jpeg", "png"], label_visibility="collapsed")
+
+    condition_result = None
+    if uploaded_image is not None:
+        image = Image.open(uploaded_image)
+        with st.spinner("Analyzing car condition..."):
+            condition_result = assess_condition(image)
+
+        col_img, col_summary = st.columns([1.2, 1])
+        with col_img:
+            st.image(condition_result["annotated_image"], caption="Detected damage", width="stretch")
+        with col_summary:
+            score = condition_result["condition_score"]
+            st.metric("Condition Score", f"{score}/100", condition_label(score))
+            st.progress(score / 100)
+            if condition_result["detections"]:
+                st.markdown("**Detected issues:**")
+                for d in condition_result["detections"]:
+                    st.markdown(f"- {d['class']} ({d['confidence']:.0%} confidence)")
+            else:
+                st.markdown("No visible damage detected.")
+
     # 🚀 Predict Button
     predict = st.button("🚀 Predict Price", use_container_width=True)
 
@@ -1049,24 +1077,28 @@ elif page == "💰 Price Prediction":
             }])
 
             # ✅ Direct prediction (no encoding)
-            predicted_price = pipe.predict(input_df)[0]
+            base_price = pipe.predict(input_df)[0]
 
-            import random
-            confidence = random.randint(82, 97)
-
-            st.markdown(f"""
-                <div class='result-box'>
-                    💰 Predicted Car Price:<br><b>₹ {predicted_price:,.0f}</b>
-                </div>
-            """, unsafe_allow_html=True)
-
-            st.markdown(f"""
-                <p style='text-align:center; color:#b0bec5; font-size:17px; margin-top:15px;'>
-                    🔍 Model Confidence: <b>{confidence}%</b>
-                </p>
-            """, unsafe_allow_html=True)
-
-            st.progress(confidence / 100)
+            if condition_result is not None:
+                final_price = base_price * condition_result["price_multiplier"]
+                st.markdown(f"""
+                    <div class='result-box'>
+                        💰 Condition-Adjusted Price:<br><b>₹ {final_price:,.0f}</b>
+                    </div>
+                """, unsafe_allow_html=True)
+                st.markdown(f"""
+                    <p style='text-align:center; color:#b0bec5; font-size:15px; margin-top:10px;'>
+                        Base market estimate: ₹ {base_price:,.0f} &nbsp;|&nbsp;
+                        Condition score: {condition_result['condition_score']}/100 ({condition_label(condition_result['condition_score'])})
+                    </p>
+                """, unsafe_allow_html=True)
+            else:
+                st.markdown(f"""
+                    <div class='result-box'>
+                        💰 Predicted Car Price:<br><b>₹ {base_price:,.0f}</b>
+                    </div>
+                """, unsafe_allow_html=True)
+                st.caption("Upload a car photo above to get a condition-adjusted price.")
 
         except Exception as e:
             st.error(f"❌ Error: {e}")
