@@ -1021,7 +1021,7 @@ elif page == "💰 Price Prediction":
     # 📸 Photo upload — condition assessment + auto brand/model detection
     st.subheader("📸 Upload a Car Photo (optional)")
     st.caption("Upload a photo to auto-detect the brand/model below and assess visible damage for a condition-adjusted price.")
-    uploaded_image = st.file_uploader("Car photo", type=["jpg", "jpeg", "png"], label_visibility="collapsed")
+    uploaded_image = st.file_uploader("Car photo", type=["jpg", "jpeg", "jfif", "png", "webp"], label_visibility="collapsed")
 
     condition_result = None
     auto_company = None
