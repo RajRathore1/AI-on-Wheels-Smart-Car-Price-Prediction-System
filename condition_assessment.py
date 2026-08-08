@@ -55,6 +55,33 @@ def assess_condition(image: Image.Image):
     }
 
 
+def assess_condition_multi(images):
+    """Assess several photos of the same car together. More angles means more complete
+    damage coverage, so detections are pooled across photos rather than scored per-photo."""
+    per_image = [assess_condition(img) for img in images]
+
+    all_detections = [d for r in per_image for d in r["detections"]]
+    damage_score = min(100, sum(DAMAGE_SEVERITY.get(d["class"], 0.5) * POINTS_PER_DETECTION for d in all_detections))
+    condition_score = round(100 - damage_score)
+    price_multiplier = MIN_PRICE_MULTIPLIER + (1 - MIN_PRICE_MULTIPLIER) * (condition_score / 100)
+
+    # Collapse repeats of the same damage type into a count, keeping the best confidence,
+    # since the same dent photographed from two angles shouldn't read as two findings.
+    summary = {}
+    for d in all_detections:
+        entry = summary.setdefault(d["class"], {"class": d["class"], "count": 0, "confidence": 0.0})
+        entry["count"] += 1
+        entry["confidence"] = max(entry["confidence"], d["confidence"])
+
+    return {
+        "per_image": per_image,
+        "detections": all_detections,
+        "summary": sorted(summary.values(), key=lambda e: -e["confidence"]),
+        "condition_score": condition_score,
+        "price_multiplier": round(price_multiplier, 3),
+    }
+
+
 def draw_detections(image: Image.Image, detections):
     annotated = image.convert("RGB").copy()
     draw = ImageDraw.Draw(annotated)

@@ -9,8 +9,8 @@ import pickle
 import plotly.express as px
 from PIL import Image
 
-from condition_assessment import assess_condition, condition_label
-from car_recognition import recognize_brand_model, match_to_price_dataset, looks_like_vehicle
+from condition_assessment import assess_condition_multi, condition_label
+from car_recognition import recognize_from_images, match_to_price_dataset
 
 # =============================================================
 # PAGE CONFIGURATION
@@ -1010,6 +1010,41 @@ elif page == "💰 Price Prediction":
             margin-top: 40px;
             animation: fadeIn 2s ease;
         }
+        /* === Numbered step headers === */
+        .step-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 22px;
+            font-weight: 700;
+            color: #e0fbfc;
+            margin: 28px 0 6px 0;
+            animation: fadeIn 1s ease;
+        }
+        .step-num {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #00b4d8, #0077b6);
+            color: #ffffff;
+            font-size: 16px;
+            font-weight: 800;
+            box-shadow: 0 0 12px rgba(0,180,216,0.45);
+        }
+        .step-optional {
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            color: #90e0ef;
+            background: rgba(0,180,216,0.12);
+            border: 1px solid rgba(0,180,216,0.35);
+            border-radius: 20px;
+            padding: 2px 10px;
+        }
         </style>
     """, unsafe_allow_html=True)
 
@@ -1018,10 +1053,15 @@ elif page == "💰 Price Prediction":
     st.markdown("<p class='sub-text'>Estimate your car’s market value instantly using intelligent Machine Learning models.</p>", unsafe_allow_html=True)
     st.markdown("<hr style='border: 1px solid #2a2a2a;'>", unsafe_allow_html=True)
 
-    # 📸 Photo upload — condition assessment + auto brand/model detection
-    st.subheader("📸 Upload a Car Photo (optional)")
-    st.caption("Upload a photo to auto-detect the brand/model below and assess visible damage for a condition-adjusted price.")
-    uploaded_image = st.file_uploader("Car photo", type=["jpg", "jpeg", "jfif", "png", "webp"], label_visibility="collapsed")
+    # ── STEP 1 ── Photos: condition assessment + auto brand/model detection
+    st.markdown("<div class='step-header'><span class='step-num'>1</span>Add photos of your car <span class='step-optional'>optional</span></div>", unsafe_allow_html=True)
+    st.caption("Add one or more photos — different angles give a more complete damage check and a more reliable brand/model match.")
+    uploaded_images = st.file_uploader(
+        "Car photos",
+        type=["jpg", "jpeg", "jfif", "png", "webp"],
+        accept_multiple_files=True,
+        label_visibility="collapsed",
+    )
 
     condition_result = None
     auto_company = None
@@ -1030,31 +1070,46 @@ elif page == "💰 Price Prediction":
 
     is_new_upload = False
     upload_identity = None
-    if uploaded_image is not None:
-        upload_identity = f"{uploaded_image.name}-{uploaded_image.size}"
-        # Marked only once the auto-fill actually applies (see below), so a photo
-        # that didn't fill the fields on an earlier run still gets another chance,
+    if uploaded_images:
+        upload_identity = "|".join(sorted(f"{f.name}-{f.size}" for f in uploaded_images))
+        # Marked only once the auto-fill actually applies (see below), so photos
+        # that didn't fill the fields on an earlier run still get another chance,
         # while manual edits after a successful fill are left alone.
         is_new_upload = st.session_state.get("autofill_applied_for") != upload_identity
 
-        image = Image.open(uploaded_image)
-        with st.spinner("Analyzing photo..."):
-            condition_result = assess_condition(image)
-            recognized = recognize_brand_model(image) if looks_like_vehicle(image) else None
+        images = [Image.open(f) for f in uploaded_images]
+        with st.spinner(f"Analyzing {len(images)} photo{'s' if len(images) > 1 else ''}..."):
+            condition_result = assess_condition_multi(images)
+            recognized, cars_seen = recognize_from_images(images)
 
-        col_img, col_summary = st.columns([1.2, 1])
-        with col_img:
-            st.image(condition_result["annotated_image"], caption="Detected damage", width="stretch")
-        with col_summary:
-            score = condition_result["condition_score"]
+        score = condition_result["condition_score"]
+
+        # ── STEP 2 ── What the photos told us
+        st.markdown("<div class='step-header'><span class='step-num'>2</span>What we found in your photos</div>", unsafe_allow_html=True)
+
+        col_score, col_issues = st.columns([1, 1.4])
+        with col_score:
             st.metric("Condition Score", f"{score}/100", condition_label(score))
             st.progress(score / 100)
-            if condition_result["detections"]:
-                st.markdown("**Detected issues:**")
-                for d in condition_result["detections"]:
-                    st.markdown(f"- {d['class']} ({d['confidence']:.0%} confidence)")
+            st.caption(f"Based on {len(images)} photo{'s' if len(images) > 1 else ''}"
+                       + (f" · {cars_seen} recognised as a car" if cars_seen != len(images) else ""))
+        with col_issues:
+            if condition_result["summary"]:
+                st.markdown("**Damage detected**")
+                for item in condition_result["summary"]:
+                    times = f" ×{item['count']}" if item["count"] > 1 else ""
+                    st.markdown(f"- {item['class']}{times} · up to {item['confidence']:.0%} confidence")
             else:
-                st.markdown("No visible damage detected.")
+                st.markdown("**No visible damage detected**")
+                st.caption("Note: fine scratches, paint chips and corrosion are still hard for the model to spot reliably.")
+
+        with st.expander(f"🖼️ View analysed photos ({len(images)})", expanded=False):
+            cols = st.columns(min(3, len(images)))
+            for i, res in enumerate(condition_result["per_image"]):
+                with cols[i % len(cols)]:
+                    n_found = len(res["detections"])
+                    st.image(res["annotated_image"], width="stretch",
+                             caption=f"Photo {i+1} — {n_found} issue{'s' if n_found != 1 else ''}")
 
         if recognized:
             top = recognized[0]
@@ -1073,7 +1128,7 @@ elif page == "💰 Price Prediction":
                     # Selectboxes ignore a changed `index=` once they already have a
                     # value in session_state, so force the override explicitly here,
                     # before the widgets below are created -- otherwise only the
-                    # very first photo uploaded in a session would ever auto-fill.
+                    # very first upload in a session would ever auto-fill.
                     st.session_state["fuel_type_select"] = auto_fuel
                     st.session_state["brand_select"] = auto_company
                     if auto_name is not None:
@@ -1083,20 +1138,21 @@ elif page == "💰 Price Prediction":
                         # previous photo so it can't linger under the new brand.
                         st.session_state.pop("model_select", None)
                     st.session_state["autofill_applied_for"] = upload_identity
-                st.caption(
-                    f"🔎 Best-effort guess: **{top['brand']} {top['model']}** "
-                    f"(similarity {top['similarity']:.0%}) — auto-filled the closest match below, but please double-check it."
+                st.success(
+                    f"🔎 Identified as **{top['brand']} {top['model']}** ({top['similarity']:.0%} match) — "
+                    "we've filled in the closest match below. Please check it's right."
                 )
             else:
-                st.caption(
-                    f"🔎 Best-effort guess: **{top['brand']} {top['model']}** "
-                    f"(similarity {top['similarity']:.0%}) — that brand isn't in our dataset, so nothing was auto-filled below. Please select the fields manually."
+                st.warning(
+                    f"🔎 Looks like a **{top['brand']} {top['model']}** ({top['similarity']:.0%} match), but that brand "
+                    "isn't in our price data — please pick your car below manually."
                 )
         else:
-            st.caption("🔎 This doesn't look like a car photo — brand/model auto-detection skipped. Please select the fields below manually.")
+            st.warning("🔎 These don't look like photos of a car, so we skipped brand/model detection. Please pick your car below.")
 
-    # 🧾 Car Input Section
-    st.subheader("🚘 Enter Car Information")
+    # ── STEP 3 ── Car details
+    step_no = 3 if uploaded_images else 2
+    st.markdown(f"<div class='step-header'><span class='step-num'>{step_no}</span>Confirm your car's details</div>", unsafe_allow_html=True)
     st.markdown("<div class='input-card'>", unsafe_allow_html=True)
 
     fuel_types = sorted(df['fuel_type'].unique())

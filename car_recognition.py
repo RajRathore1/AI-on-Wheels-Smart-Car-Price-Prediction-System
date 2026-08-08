@@ -75,10 +75,40 @@ def _embed_prompts(prompts: tuple) -> np.ndarray:
 def looks_like_vehicle(image: Image.Image) -> bool:
     """Zero-shot check that the photo actually contains a car, so we don't confidently
     name a car model for a photo of something else entirely."""
-    vec = _embed_image(image)
+    return _vec_looks_like_vehicle(_embed_image(image))
+
+
+def _vec_looks_like_vehicle(vec: np.ndarray) -> bool:
     veh = _embed_prompts(tuple(VEHICLE_PROMPTS)) @ vec
     non = _embed_prompts(tuple(NON_VEHICLE_PROMPTS)) @ vec
     return float(veh.max()) > float(non.max())
+
+
+def recognize_from_images(images):
+    """Recognize a car from several photos of it. Averaging the embeddings across angles
+    is more robust than trusting any single shot, and photos that don't look like a car
+    are ignored so a stray non-car image can't drag the result off.
+
+    Returns (results, used_count) -- results is None when no photo looked like a car."""
+    vecs = [_embed_image(img) for img in images]
+    car_vecs = [v for v in vecs if _vec_looks_like_vehicle(v)]
+    if not car_vecs:
+        return None, 0
+
+    mean_vec = np.mean(car_vecs, axis=0)
+    mean_vec = mean_vec / np.linalg.norm(mean_vec)
+    return _match_vector(mean_vec), len(car_vecs)
+
+
+def _match_vector(vec: np.ndarray):
+    ref_embeddings, ref_classes, label_map = load_reference_data()
+    sims = ref_embeddings @ vec
+    top_idx = np.argsort(sims)[::-1][:TOP_K]
+    results = []
+    for i in top_idx:
+        info = label_map[int(ref_classes[i])]
+        results.append({"brand": info["company"], "model": info["model"], "similarity": float(sims[i])})
+    return results
 
 
 def recognize_brand_model(image: Image.Image):
@@ -86,17 +116,7 @@ def recognize_brand_model(image: Image.Image):
     against a reference set built from the brands in our own price dataset, using CLIP
     image embeddings. Good but not perfect -- results are shown as a suggestion the
     user can correct."""
-    ref_embeddings, ref_classes, label_map = load_reference_data()
-    vec = _embed_image(image)
-
-    sims = ref_embeddings @ vec
-    top_idx = np.argsort(sims)[::-1][:TOP_K]
-
-    results = []
-    for i in top_idx:
-        info = label_map[int(ref_classes[i])]
-        results.append({"brand": info["company"], "model": info["model"], "similarity": float(sims[i])})
-    return results
+    return _match_vector(_embed_image(image))
 
 
 def match_to_price_dataset(brand: str, model: str, df: pd.DataFrame):
