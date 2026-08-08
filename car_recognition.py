@@ -96,9 +96,9 @@ def _embed_image(image: Image.Image):
 
 def recognize_brand_model(image: Image.Image):
     """Best-effort recognition of the car's brand + model from a photo via nearest-neighbor
-    lookup against a small reference set (few images per class), using a frozen ImageNet
-    backbone. Accuracy is modest (few-shot, thousands of classes) -- treat results as a
-    starting suggestion, not a certain answer."""
+    lookup against a reference set built from the brands in our own price dataset (a few
+    images per model). Accuracy is modest (few-shot over ~1,500 classes) -- treat results
+    as a starting suggestion, not a certain answer."""
     pca, ref_embeddings, ref_classes, label_map = load_reference_data()
     vec = _embed_image(image)
     reduced = pca.transform(vec)
@@ -111,26 +111,26 @@ def recognize_brand_model(image: Image.Image):
     for i in top_idx:
         cls = int(ref_classes[i])
         info = label_map[cls]
-        results.append({"brand": info["brand"], "model": info["model"], "similarity": float(sims[i])})
+        results.append({"brand": info["company"], "model": info["model"], "similarity": float(sims[i])})
     return results
 
 
 def match_to_price_dataset(brand: str, model: str, df: pd.DataFrame):
-    """Fuzzy-match a recognized brand/model to the closest entries actually present in our
-    own price dataset, so the UI can auto-select real dropdown options."""
+    """Map a recognized brand/model onto entries that actually exist in our price dataset,
+    so the UI can auto-select real dropdown options. The reference set is now keyed by our
+    own company names, so the brand is an exact match -- only the model needs fuzzy
+    matching against that brand's model names."""
     companies = df["company"].unique().tolist()
-    brand_matches = difflib.get_close_matches(brand.title(), companies, n=1, cutoff=MIN_MATCH_RATIO)
-    if not brand_matches:
-        # try case-insensitive exact match as a fallback
+    if brand not in companies:
+        # Reference set is built from our own brands, so this should be rare; fall back to
+        # a case-insensitive lookup rather than guessing a different brand entirely.
         lower_map = {c.lower(): c for c in companies}
-        brand_matches = [lower_map[brand.lower()]] if brand.lower() in lower_map else []
+        if brand.lower() not in lower_map:
+            return None
+        brand = lower_map[brand.lower()]
 
-    if not brand_matches:
-        return None
-
-    matched_company = brand_matches[0]
-    candidate_names = df[df["company"] == matched_company]["name"].unique().tolist()
-    name_matches = difflib.get_close_matches(f"{brand} {model}", candidate_names, n=1, cutoff=0.3)
+    candidate_names = df[df["company"] == brand]["name"].unique().tolist()
+    name_matches = difflib.get_close_matches(model, candidate_names, n=1, cutoff=0.45)
     matched_name = name_matches[0] if name_matches else None
 
-    return {"company": matched_company, "name": matched_name}
+    return {"company": brand, "name": matched_name}
