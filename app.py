@@ -1072,10 +1072,10 @@ elif page == "💰 Price Prediction":
     upload_identity = None
     if uploaded_images:
         upload_identity = "|".join(sorted(f"{f.name}-{f.size}" for f in uploaded_images))
-        # Marked only once the auto-fill actually applies (see below), so photos
-        # that didn't fill the fields on an earlier run still get another chance,
-        # while manual edits after a successful fill are left alone.
-        is_new_upload = st.session_state.get("autofill_applied_for") != upload_identity
+        # "Have we seen these exact photos before?" -- kept separate from which
+        # candidate has been applied, so re-running for a candidate change doesn't
+        # look like a fresh upload and reset the user's choice.
+        is_new_upload = st.session_state.get("seen_upload") != upload_identity
 
         images = [Image.open(f) for f in uploaded_images]
         with st.spinner(f"Analyzing {len(images)} photo{'s' if len(images) > 1 else ''}..."):
@@ -1112,40 +1112,78 @@ elif page == "💰 Price Prediction":
                              caption=f"Photo {i+1} — {n_found} issue{'s' if n_found != 1 else ''}")
 
         if recognized:
-            top = recognized[0]
-            match = match_to_price_dataset(top["brand"], top["model"], df)
-            if match:
-                auto_company = match["company"]
-                auto_name = match["name"]
-                if auto_name is not None:
-                    auto_fuel = df[(df['company'] == auto_company) & (df['name'] == auto_name)]['fuel_type'].iloc[0]
-                else:
-                    # Brand matched but no confident specific model -- still pick a
-                    # fuel type that actually exists for this brand, otherwise the
-                    # fuel filter below can exclude it and silently drop the brand too.
-                    auto_fuel = df[df['company'] == auto_company]['fuel_type'].mode().iloc[0]
-                if is_new_upload:
-                    # Selectboxes ignore a changed `index=` once they already have a
-                    # value in session_state, so force the override explicitly here,
-                    # before the widgets below are created -- otherwise only the
-                    # very first upload in a session would ever auto-fill.
-                    st.session_state["fuel_type_select"] = auto_fuel
-                    st.session_state["brand_select"] = auto_company
-                    if auto_name is not None:
-                        st.session_state["model_select"] = auto_name
-                    else:
-                        # No specific model matched -- clear any leftover model from a
-                        # previous photo so it can't linger under the new brand.
-                        st.session_state.pop("model_select", None)
-                    st.session_state["autofill_applied_for"] = upload_identity
-                st.success(
-                    f"🔎 Identified as **{top['brand']} {top['model']}** ({top['similarity']:.0%} match) — "
-                    "we've filled in the closest match below. Please check it's right."
+            # Only offer candidates whose brand actually exists in our price data.
+            usable = []
+            for cand in recognized:
+                m = match_to_price_dataset(cand["brand"], cand["model"], df)
+                if m:
+                    usable.append((cand, m))
+
+            if usable:
+                st.markdown("**🔎 Which of these is your car?**")
+                st.caption(
+                    "Our best guess is first. Picking the right one fills in the details below — "
+                    "if none look right, just choose the last option and select your car manually."
                 )
+
+                def candidate_label(cand):
+                    # Reference labels already carry the brand ("Tata Indica",
+                    # "HYUNDAI Atos"), so don't prefix it again -- just normalise the
+                    # brand's casing to match our own naming.
+                    model_name = cand["model"]
+                    if model_name.lower().startswith(cand["brand"].lower()):
+                        model_name = cand["brand"] + model_name[len(cand["brand"]):]
+                    else:
+                        model_name = f"{cand['brand']} {model_name}"
+                    return f"{model_name}  ·  {cand['similarity']:.0%} match"
+
+                options = [candidate_label(c) for c, _ in usable]
+                options.append("None of these — I'll pick manually")
+
+                # Reset the choice back to the top guess whenever new photos arrive
+                # (and only then -- otherwise picking a candidate would be undone).
+                if is_new_upload:
+                    st.session_state["candidate_pick"] = options[0]
+                    st.session_state["seen_upload"] = upload_identity
+                if st.session_state.get("candidate_pick") not in options:
+                    st.session_state.pop("candidate_pick", None)
+
+                picked = st.radio(
+                    "Candidates", options, key="candidate_pick", label_visibility="collapsed"
+                )
+
+                picked_idx = options.index(picked)
+                if picked_idx < len(usable):
+                    match = usable[picked_idx][1]
+                    auto_company = match["company"]
+                    auto_name = match["name"]
+                    if auto_name is not None:
+                        auto_fuel = df[(df['company'] == auto_company) & (df['name'] == auto_name)]['fuel_type'].iloc[0]
+                    else:
+                        # Brand matched but no confident specific model -- still pick a
+                        # fuel type that actually exists for this brand, otherwise the
+                        # fuel filter below can exclude it and silently drop the brand too.
+                        auto_fuel = df[df['company'] == auto_company]['fuel_type'].mode().iloc[0]
+
+                    # Re-apply whenever the photos OR the chosen candidate change. Selectboxes
+                    # ignore a changed `index=` once they hold a value, so write session_state
+                    # directly, before those widgets are created below.
+                    applied_key = f"{upload_identity}#{picked_idx}"
+                    if st.session_state.get("autofill_applied_for") != applied_key:
+                        st.session_state["fuel_type_select"] = auto_fuel
+                        st.session_state["brand_select"] = auto_company
+                        if auto_name is not None:
+                            st.session_state["model_select"] = auto_name
+                        else:
+                            # Clear any leftover model from a previous photo so it can't
+                            # linger under the new brand.
+                            st.session_state.pop("model_select", None)
+                        st.session_state["autofill_applied_for"] = applied_key
             else:
+                top = recognized[0]
                 st.warning(
-                    f"🔎 Looks like a **{top['brand']} {top['model']}** ({top['similarity']:.0%} match), but that brand "
-                    "isn't in our price data — please pick your car below manually."
+                    f"🔎 Looks closest to a **{top['brand']} {top['model']}**, but that brand isn't in our "
+                    "price data — please pick your car below manually."
                 )
         else:
             st.warning("🔎 These don't look like photos of a car, so we skipped brand/model detection. Please pick your car below.")
