@@ -5,25 +5,30 @@ import os
 import numpy as np
 import pandas as pd
 import streamlit as st
-import torch
 from PIL import Image
-from torchvision import models, transforms
 
 MODELS_DIR = "models"
-
-PREPROCESS = transforms.Compose([
-    transforms.Resize(256),
-    transforms.CenterCrop(224),
-    transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-])
 
 TOP_K = 5
 MIN_MATCH_RATIO = 0.55
 
 
+def _get_preprocess():
+    from torchvision import transforms
+
+    return transforms.Compose([
+        transforms.Resize(256),
+        transforms.CenterCrop(224),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    ])
+
+
 @st.cache_resource
 def load_backbone():
+    import torch
+    from torchvision import models
+
     weights = models.MobileNet_V2_Weights.IMAGENET1K_V2
     backbone = models.mobilenet_v2(weights=weights)
     backbone.classifier = torch.nn.Identity()
@@ -45,8 +50,10 @@ def load_reference_data():
 
 
 def _embed_image(image: Image.Image):
+    import torch
+
     backbone = load_backbone()
-    tensor = PREPROCESS(image.convert("RGB")).unsqueeze(0)
+    tensor = _get_preprocess()(image.convert("RGB")).unsqueeze(0)
     with torch.no_grad():
         vec = backbone(tensor).numpy()
     return vec
