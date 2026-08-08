@@ -10,7 +10,7 @@ import plotly.express as px
 from PIL import Image
 
 from condition_assessment import assess_condition, condition_label
-from car_recognition import recognize_brand_model, match_to_price_dataset
+from car_recognition import recognize_brand_model, match_to_price_dataset, looks_like_vehicle
 
 # =============================================================
 # PAGE CONFIGURATION
@@ -1032,7 +1032,7 @@ elif page == "💰 Price Prediction":
         image = Image.open(uploaded_image)
         with st.spinner("Analyzing photo..."):
             condition_result = assess_condition(image)
-            recognized = recognize_brand_model(image)
+            recognized = recognize_brand_model(image) if looks_like_vehicle(image) else None
 
         col_img, col_summary = st.columns([1.2, 1])
         with col_img:
@@ -1060,6 +1060,8 @@ elif page == "💰 Price Prediction":
                 auto_name = match["name"]
                 if auto_name is not None:
                     auto_fuel = df[(df['company'] == auto_company) & (df['name'] == auto_name)]['fuel_type'].iloc[0]
+        else:
+            st.caption("🔎 This doesn't look like a car photo — brand/model auto-detection skipped. Please select the fields below manually.")
 
     # 🧾 Car Input Section
     st.subheader("🚘 Enter Car Information")

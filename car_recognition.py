@@ -12,6 +12,16 @@ MODELS_DIR = "models"
 TOP_K = 5
 MIN_MATCH_RATIO = 0.55
 
+# Substrings matched against ImageNet category names to gate the fine-grained
+# brand/model lookup -- avoids confidently "recognizing" a car in photos of
+# unrelated objects, since nearest-neighbor search always returns *something*.
+VEHICLE_KEYWORDS = [
+    "car", "truck", "van", "bus", "jeep", "limousine", "ambulance", "cab",
+    "wagon", "convertible", "racer", "trailer", "tow", "tractor", "moped",
+    "golfcart", "go-kart", "minibus", "wheel", "garbage truck", "fire engine",
+    "snowplow", "jinrikisha", "model t", "recreational vehicle", "school bus",
+]
+
 
 def _get_preprocess():
     from torchvision import transforms
@@ -34,6 +44,31 @@ def load_backbone():
     backbone.classifier = torch.nn.Identity()
     backbone.eval()
     return backbone
+
+
+@st.cache_resource
+def load_classifier_backbone():
+    from torchvision import models
+
+    weights = models.MobileNet_V2_Weights.IMAGENET1K_V2
+    backbone = models.mobilenet_v2(weights=weights)
+    backbone.eval()
+    return backbone, weights.meta["categories"]
+
+
+def looks_like_vehicle(image: Image.Image, top_k: int = 5) -> bool:
+    """Cheap sanity check: does the general ImageNet classifier think this photo
+    contains a vehicle at all? Prevents confidently guessing a car brand/model
+    for photos of unrelated objects."""
+    import torch
+
+    backbone, categories = load_classifier_backbone()
+    tensor = _get_preprocess()(image.convert("RGB")).unsqueeze(0)
+    with torch.no_grad():
+        logits = backbone(tensor)
+    top_indices = torch.topk(logits[0], top_k).indices.tolist()
+    top_labels = [categories[i].lower() for i in top_indices]
+    return any(keyword in label for label in top_labels for keyword in VEHICLE_KEYWORDS)
 
 
 @st.cache_resource
