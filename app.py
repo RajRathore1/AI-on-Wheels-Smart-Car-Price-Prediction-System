@@ -10,6 +10,7 @@ import plotly.express as px
 from PIL import Image
 
 from condition_assessment import assess_condition, condition_label
+from car_recognition import recognize_brand_model, match_to_price_dataset
 
 # =============================================================
 # PAGE CONFIGURATION
@@ -1017,41 +1018,21 @@ elif page == "💰 Price Prediction":
     st.markdown("<p class='sub-text'>Estimate your car’s market value instantly using intelligent Machine Learning models.</p>", unsafe_allow_html=True)
     st.markdown("<hr style='border: 1px solid #2a2a2a;'>", unsafe_allow_html=True)
 
-    # 🧾 Car Input Section
-    st.subheader("🚘 Enter Car Information")
-    st.markdown("<div class='input-card'>", unsafe_allow_html=True)
-
-    fuel_types = sorted(df['fuel_type'].unique())
-
-    col1, col2 = st.columns(2)
-    with col2:
-        kms_driven = st.number_input("Kilometers Driven", min_value=0, max_value=500000, value=100)
-        fuel_type = st.selectbox("Fuel Type", fuel_types)
-
-    # Only offer brands/models that actually exist with the selected fuel type
-    fuel_filtered_df = df[df['fuel_type'] == fuel_type]
-
-    with col1:
-        companies = sorted(fuel_filtered_df['company'].unique())
-        company = st.selectbox("Car Brand", companies)
-        # Dynamically filter car models based on the selected brand + fuel type
-        valid_car_names = sorted(fuel_filtered_df[fuel_filtered_df['company'] == company]['name'].unique())
-        name = st.selectbox("Car Model Name", valid_car_names)
-        year = st.number_input("Year of Purchase", min_value=1995, max_value=2025, value=2019)
-
-    st.markdown("</div>", unsafe_allow_html=True)
-    st.markdown("<br>", unsafe_allow_html=True)
-
-    # 📸 Condition Assessment (optional photo upload)
+    # 📸 Photo upload — condition assessment + auto brand/model detection
     st.subheader("📸 Upload a Car Photo (optional)")
-    st.caption("Upload a photo of the car to automatically detect visible damage and adjust the predicted price for its condition.")
+    st.caption("Upload a photo to auto-detect the brand/model below and assess visible damage for a condition-adjusted price.")
     uploaded_image = st.file_uploader("Car photo", type=["jpg", "jpeg", "png"], label_visibility="collapsed")
 
     condition_result = None
+    auto_company = None
+    auto_name = None
+    auto_fuel = None
+
     if uploaded_image is not None:
         image = Image.open(uploaded_image)
-        with st.spinner("Analyzing car condition..."):
+        with st.spinner("Analyzing photo..."):
             condition_result = assess_condition(image)
+            recognized = recognize_brand_model(image)
 
         col_img, col_summary = st.columns([1.2, 1])
         with col_img:
@@ -1066,6 +1047,47 @@ elif page == "💰 Price Prediction":
                     st.markdown(f"- {d['class']} ({d['confidence']:.0%} confidence)")
             else:
                 st.markdown("No visible damage detected.")
+
+        if recognized:
+            top = recognized[0]
+            match = match_to_price_dataset(top["brand"], top["model"], df)
+            st.caption(
+                f"🔎 Best-effort guess: **{top['brand']} {top['model']}** "
+                f"(similarity {top['similarity']:.0%}) — this recognition is approximate, please double-check the fields below."
+            )
+            if match:
+                auto_company = match["company"]
+                auto_name = match["name"]
+                if auto_name is not None:
+                    auto_fuel = df[(df['company'] == auto_company) & (df['name'] == auto_name)]['fuel_type'].iloc[0]
+
+    # 🧾 Car Input Section
+    st.subheader("🚘 Enter Car Information")
+    st.markdown("<div class='input-card'>", unsafe_allow_html=True)
+
+    fuel_types = sorted(df['fuel_type'].unique())
+
+    col1, col2 = st.columns(2)
+    with col2:
+        kms_driven = st.number_input("Kilometers Driven", min_value=0, max_value=500000, value=100)
+        fuel_index = fuel_types.index(auto_fuel) if auto_fuel in fuel_types else 0
+        fuel_type = st.selectbox("Fuel Type", fuel_types, index=fuel_index)
+
+    # Only offer brands/models that actually exist with the selected fuel type
+    fuel_filtered_df = df[df['fuel_type'] == fuel_type]
+
+    with col1:
+        companies = sorted(fuel_filtered_df['company'].unique())
+        company_index = companies.index(auto_company) if auto_company in companies else 0
+        company = st.selectbox("Car Brand", companies, index=company_index)
+        # Dynamically filter car models based on the selected brand + fuel type
+        valid_car_names = sorted(fuel_filtered_df[fuel_filtered_df['company'] == company]['name'].unique())
+        name_index = valid_car_names.index(auto_name) if auto_name in valid_car_names else 0
+        name = st.selectbox("Car Model Name", valid_car_names, index=name_index)
+        year = st.number_input("Year of Purchase", min_value=1995, max_value=2025, value=2019)
+
+    st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown("<br>", unsafe_allow_html=True)
 
     # 🚀 Predict Button
     predict = st.button("🚀 Predict Price", use_container_width=True)
