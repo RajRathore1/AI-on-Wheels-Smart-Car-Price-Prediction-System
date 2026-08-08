@@ -1061,13 +1061,17 @@ elif page == "💰 Price Prediction":
                 auto_name = match["name"]
                 if auto_name is not None:
                     auto_fuel = df[(df['company'] == auto_company) & (df['name'] == auto_name)]['fuel_type'].iloc[0]
+                else:
+                    # Brand matched but no confident specific model -- still pick a
+                    # fuel type that actually exists for this brand, otherwise the
+                    # fuel filter below can exclude it and silently drop the brand too.
+                    auto_fuel = df[df['company'] == auto_company]['fuel_type'].mode().iloc[0]
                 if is_new_upload:
                     # Selectboxes ignore a changed `index=` once they already have a
                     # value in session_state, so force the override explicitly here,
                     # before the widgets below are created -- otherwise only the
                     # very first photo uploaded in a session would ever auto-fill.
-                    if auto_fuel is not None:
-                        st.session_state["fuel_type_select"] = auto_fuel
+                    st.session_state["fuel_type_select"] = auto_fuel
                     st.session_state["brand_select"] = auto_company
                     if auto_name is not None:
                         st.session_state["model_select"] = auto_name
