@@ -1029,10 +1029,13 @@ elif page == "💰 Price Prediction":
     auto_fuel = None
 
     is_new_upload = False
+    upload_identity = None
     if uploaded_image is not None:
         upload_identity = f"{uploaded_image.name}-{uploaded_image.size}"
-        is_new_upload = st.session_state.get("last_upload_identity") != upload_identity
-        st.session_state["last_upload_identity"] = upload_identity
+        # Marked only once the auto-fill actually applies (see below), so a photo
+        # that didn't fill the fields on an earlier run still gets another chance,
+        # while manual edits after a successful fill are left alone.
+        is_new_upload = st.session_state.get("autofill_applied_for") != upload_identity
 
         image = Image.open(uploaded_image)
         with st.spinner("Analyzing photo..."):
@@ -1075,6 +1078,11 @@ elif page == "💰 Price Prediction":
                     st.session_state["brand_select"] = auto_company
                     if auto_name is not None:
                         st.session_state["model_select"] = auto_name
+                    else:
+                        # No specific model matched -- clear any leftover model from a
+                        # previous photo so it can't linger under the new brand.
+                        st.session_state.pop("model_select", None)
+                    st.session_state["autofill_applied_for"] = upload_identity
                 st.caption(
                     f"🔎 Best-effort guess: **{top['brand']} {top['model']}** "
                     f"(similarity {top['similarity']:.0%}) — auto-filled the closest match below, but please double-check it."
