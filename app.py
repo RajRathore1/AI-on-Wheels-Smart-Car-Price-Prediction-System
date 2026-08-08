@@ -7,11 +7,20 @@ import pandas as pd
 import numpy as np
 import pickle
 import plotly.express as px
+import plotly.graph_objects as go
 import plotly.io as pio
 from PIL import Image
 
 from condition_assessment import assess_condition_multi, condition_label
 from car_recognition import recognize_from_images, match_to_price_dataset
+from valuation import (
+    build_report,
+    damage_impact,
+    depreciation_curve,
+    market_position,
+    predict_with_range,
+    similar_listings,
+)
 
 # =============================================================
 # PAGE CONFIGURATION
@@ -650,49 +659,154 @@ elif page == "💰 Price Prediction":
         name = st.selectbox("Car Model Name", valid_car_names, key="model_select")
         year = st.number_input("Year of Purchase", min_value=1995, max_value=2025, value=2019)
 
-    st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
+    # ── Valuation ── recalculated live as the inputs change, so there's no
+    # "press the button again" step after tweaking a field.
+    st.markdown(
+        f"<div class='step'><span class='step-num'>{step_no + 1}</span>Your valuation</div>",
+        unsafe_allow_html=True,
+    )
 
-    predict = st.button("Calculate value", width="stretch")
+    try:
+        car = {
+            'name': name,
+            'company': company,
+            'year': year,
+            'kms_driven': kms_driven,
+            'fuel_type': fuel_type,
+        }
+        input_df = pd.DataFrame([car])
 
-    if predict:
-        try:
-            input_df = pd.DataFrame([{
-                'name': name,
-                'company': company,
-                'year': year,
-                'kms_driven': kms_driven,
-                'fuel_type': fuel_type
-            }])
+        est = predict_with_range(pipe, input_df)
+        multiplier = condition_result["price_multiplier"] if condition_result else 1.0
+        final_price = est["price"] * multiplier
+        low, high = est["low"] * multiplier, est["high"] * multiplier
 
-            base_price = pipe.predict(input_df)[0]
+        conf_tone = {"High": "#22c55e", "Moderate": "#f59e0b", "Low": "#ef4444"}[est["confidence"]]
+        cond_line = ""
+        if condition_result:
+            cs = condition_result["condition_score"]
+            cond_line = (
+                f"&nbsp;·&nbsp; Condition <b>{cs}/100 ({condition_label(cs)})</b>"
+                f"&nbsp;·&nbsp; Before condition <b>₹ {est['price']:,.0f}</b>"
+            )
 
-            if condition_result is not None:
-                final_price = base_price * condition_result["price_multiplier"]
-                cond_score = condition_result["condition_score"]
-                st.markdown(f"""
-                    <div class='result'>
-                        <div class='result-label'>Condition-adjusted value</div>
-                        <div class='result-value'>₹ {final_price:,.0f}</div>
-                        <div class='result-meta'>
-                            Base market estimate <b>₹ {base_price:,.0f}</b>
-                            &nbsp;·&nbsp; Condition <b>{cond_score}/100 ({condition_label(cond_score)})</b>
-                        </div>
-                    </div>
-                """, unsafe_allow_html=True)
+        st.markdown(f"""
+            <div class='result'>
+                <div class='result-label'>
+                    {'Condition-adjusted value' if condition_result else 'Estimated market value'}
+                </div>
+                <div class='result-value'>₹ {final_price:,.0f}</div>
+                <div class='result-meta'>
+                    Likely range <b>₹ {low:,.0f} – ₹ {high:,.0f}</b>
+                    &nbsp;·&nbsp; Model confidence
+                    <b style='color:{conf_tone};'>{est['confidence']}</b>
+                    {cond_line}
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+
+        impacts = damage_impact(condition_result, est["price"])
+
+        t_market, t_depr, t_similar, t_cond = st.tabs(
+            ["Market position", "How it ages", "Similar cars", "Condition detail"]
+        )
+
+        # --- Where this car sits against comparable listings ---
+        with t_market:
+            pos = market_position(df, company, final_price)
+            fig = px.histogram(pos["pool"], nbins=45, title=f"{company} listings by price")
+            fig.add_vline(x=final_price, line_width=2.5, line_color=ACCENT,
+                          annotation_text="Your car", annotation_position="top")
+            fig.update_layout(showlegend=False, xaxis_title="Price (₹)", yaxis_title="Listings")
+            st.plotly_chart(fig, width="stretch")
+            st.caption(
+                f"Priced above about **{pos['percentile']:.0f}%** of {company} listings. "
+                f"Typical {company} listing sits at ₹ {pos['median']:,.0f}."
+            )
+
+        # --- Value against manufacturing year ---
+        with t_depr:
+            curve = depreciation_curve(pipe, car)
+            fig2 = px.line(curve, x="year", y="price", markers=True,
+                           title="What the same car is worth by model year")
+            fig2.add_vline(x=year, line_width=2, line_dash="dot", line_color=ACCENT,
+                           annotation_text="Yours", annotation_position="top")
+            fig2.update_layout(xaxis_title="Manufacturing year", yaxis_title="Estimated price (₹)")
+            st.plotly_chart(fig2, width="stretch")
+            newer = curve[curve["year"] > year]["price"]
+            if len(newer):
+                st.caption(
+                    f"A model year newer is worth about ₹ {newer.iloc[0] - est['price']:,.0f} more, "
+                    "based on how the model values age."
+                )
+
+        # --- Real comparable listings ---
+        with t_similar:
+            sims = similar_listings(df, company, name, year, kms_driven)
+            if sims.empty:
+                st.info("No comparable listings for this car in the dataset.")
             else:
-                st.markdown(f"""
-                    <div class='result'>
-                        <div class='result-label'>Estimated market value</div>
-                        <div class='result-value'>₹ {base_price:,.0f}</div>
-                        <div class='result-meta'>Add photos above for a condition-adjusted figure.</div>
-                    </div>
-                """, unsafe_allow_html=True)
+                show = sims.rename(columns={
+                    "name": "Model", "year": "Year", "kms_driven": "Kilometers",
+                    "fuel_type": "Fuel", "Price": "Listed price",
+                })
+                st.dataframe(
+                    show.style.format({"Listed price": "₹ {:,.0f}", "Kilometers": "{:,.0f}"}),
+                    width="stretch", hide_index=True,
+                )
+                st.caption("Actual listings closest to your car on age and distance driven.")
 
-        except Exception as e:
-            st.error(f"Error: {e}")
+        # --- Condition breakdown ---
+        with t_cond:
+            if not condition_result:
+                st.info("Add photos in step 1 to see a condition assessment and its price impact.")
+            else:
+                g1, g2 = st.columns([1, 1.3])
+                with g1:
+                    gauge = go.Figure(go.Indicator(
+                        mode="gauge+number",
+                        value=condition_result["condition_score"],
+                        number={"suffix": "/100"},
+                        gauge={
+                            "axis": {"range": [0, 100]},
+                            "bar": {"color": ACCENT},
+                            "steps": [
+                                {"range": [0, 55], "color": "rgba(239,68,68,0.25)"},
+                                {"range": [55, 75], "color": "rgba(245,158,11,0.25)"},
+                                {"range": [75, 100], "color": "rgba(34,197,94,0.25)"},
+                            ],
+                        },
+                    ))
+                    gauge.update_layout(height=240, margin=dict(t=10, b=10, l=20, r=20))
+                    st.plotly_chart(gauge, width="stretch")
+                with g2:
+                    if impacts:
+                        st.markdown("**Estimated impact on value**")
+                        for imp in impacts:
+                            times = f" ×{imp['count']}" if imp["count"] > 1 else ""
+                            st.markdown(f"- {imp['class']}{times} — about **−₹ {imp['cost']:,.0f}**")
+                        st.caption(
+                            f"Total condition adjustment: −₹ {est['price'] - final_price:,.0f}"
+                        )
+                    else:
+                        st.markdown("**No visible damage detected**")
+                        st.caption("No condition deduction was applied to the estimate.")
+
+        st.download_button(
+            "Download valuation report",
+            data=build_report(car, {**est, "price": final_price, "low": low, "high": high},
+                              condition_result, impacts),
+            file_name=f"valuation-{name.replace(' ', '-').lower()}.txt",
+            mime="text/plain",
+        )
+
+    except Exception as e:
+        st.error(f"Could not calculate a valuation: {e}")
 
     st.markdown("<hr>", unsafe_allow_html=True)
     st.caption(
         "Estimates come from an Extra Trees model trained on Indian resale listings. "
-        "Treat them as a guide — condition, service history and location all move the real price."
+        "The range reflects how much the model's trees disagree — a wide range means "
+        "fewer comparable cars in the data. Treat it as a guide: condition, service "
+        "history and location all move the real price."
     )
