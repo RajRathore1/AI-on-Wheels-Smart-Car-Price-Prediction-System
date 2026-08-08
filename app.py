@@ -25,7 +25,7 @@ st.set_page_config(
 # =============================================================
 @st.cache_resource
 def load_model():
-    return pickle.load(open("LinearRegressionModel.pkl", "rb"))
+    return pickle.load(open("PriceModel.pkl", "rb"))
 
 @st.cache_data
 def load_data():
@@ -707,7 +707,7 @@ if page == "🏠 Home":
             </div>
             <div class='feature-item'>
                 <div class='feature-title'>⚡ Ultra Fast & Accurate</div>
-                <div style='color:#b0bec5; font-size:15px; line-height: 1.5;'>Powered by Sklearn optimized Linear Regression models.</div>
+                <div style='color:#b0bec5; font-size:15px; line-height: 1.5;'>Powered by a Random Forest regression model.</div>
             </div>
         </div>
         ''', unsafe_allow_html=True)
@@ -1110,7 +1110,7 @@ elif page == "💰 Price Prediction":
     st.markdown("<br>", unsafe_allow_html=True)
 
     # 🧠 Model Info
-    st.info("⚙️ Powered by Linear Regression — trained on Indian car resale data. The model learns complex relationships between brand, year, mileage, and fuel type to deliver realistic predictions.")
+    st.info("⚙️ Powered by a Random Forest model — trained on Indian car resale data. The model learns complex relationships between brand, year, mileage, and fuel type to deliver realistic predictions.")
 
     # ✨ Footer
     st.markdown("<hr style='border: 1px solid #2a2a2a;'>", unsafe_allow_html=True)
