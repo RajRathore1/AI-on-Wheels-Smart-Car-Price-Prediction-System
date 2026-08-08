@@ -1028,7 +1028,12 @@ elif page == "💰 Price Prediction":
     auto_name = None
     auto_fuel = None
 
+    is_new_upload = False
     if uploaded_image is not None:
+        upload_identity = f"{uploaded_image.name}-{uploaded_image.size}"
+        is_new_upload = st.session_state.get("last_upload_identity") != upload_identity
+        st.session_state["last_upload_identity"] = upload_identity
+
         image = Image.open(uploaded_image)
         with st.spinner("Analyzing photo..."):
             condition_result = assess_condition(image)
@@ -1056,6 +1061,16 @@ elif page == "💰 Price Prediction":
                 auto_name = match["name"]
                 if auto_name is not None:
                     auto_fuel = df[(df['company'] == auto_company) & (df['name'] == auto_name)]['fuel_type'].iloc[0]
+                if is_new_upload:
+                    # Selectboxes ignore a changed `index=` once they already have a
+                    # value in session_state, so force the override explicitly here,
+                    # before the widgets below are created -- otherwise only the
+                    # very first photo uploaded in a session would ever auto-fill.
+                    if auto_fuel is not None:
+                        st.session_state["fuel_type_select"] = auto_fuel
+                    st.session_state["brand_select"] = auto_company
+                    if auto_name is not None:
+                        st.session_state["model_select"] = auto_name
                 st.caption(
                     f"🔎 Best-effort guess: **{top['brand']} {top['model']}** "
                     f"(similarity {top['similarity']:.0%}) — auto-filled the closest match below, but please double-check it."
@@ -1077,20 +1092,21 @@ elif page == "💰 Price Prediction":
     col1, col2 = st.columns(2)
     with col2:
         kms_driven = st.number_input("Kilometers Driven", min_value=0, max_value=500000, value=100)
-        fuel_index = fuel_types.index(auto_fuel) if auto_fuel in fuel_types else 0
-        fuel_type = st.selectbox("Fuel Type", fuel_types, index=fuel_index)
+        fuel_type = st.selectbox("Fuel Type", fuel_types, key="fuel_type_select")
 
     # Only offer brands/models that actually exist with the selected fuel type
     fuel_filtered_df = df[df['fuel_type'] == fuel_type]
 
     with col1:
         companies = sorted(fuel_filtered_df['company'].unique())
-        company_index = companies.index(auto_company) if auto_company in companies else 0
-        company = st.selectbox("Car Brand", companies, index=company_index)
+        if st.session_state.get("brand_select") not in companies:
+            st.session_state.pop("brand_select", None)
+        company = st.selectbox("Car Brand", companies, key="brand_select")
         # Dynamically filter car models based on the selected brand + fuel type
         valid_car_names = sorted(fuel_filtered_df[fuel_filtered_df['company'] == company]['name'].unique())
-        name_index = valid_car_names.index(auto_name) if auto_name in valid_car_names else 0
-        name = st.selectbox("Car Model Name", valid_car_names, index=name_index)
+        if st.session_state.get("model_select") not in valid_car_names:
+            st.session_state.pop("model_select", None)
+        name = st.selectbox("Car Model Name", valid_car_names, key="model_select")
         year = st.number_input("Year of Purchase", min_value=1995, max_value=2025, value=2019)
 
     st.markdown("</div>", unsafe_allow_html=True)
