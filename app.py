@@ -1051,15 +1051,20 @@ elif page == "💰 Price Prediction":
         if recognized:
             top = recognized[0]
             match = match_to_price_dataset(top["brand"], top["model"], df)
-            st.caption(
-                f"🔎 Best-effort guess: **{top['brand']} {top['model']}** "
-                f"(similarity {top['similarity']:.0%}) — this recognition is approximate, please double-check the fields below."
-            )
             if match:
                 auto_company = match["company"]
                 auto_name = match["name"]
                 if auto_name is not None:
                     auto_fuel = df[(df['company'] == auto_company) & (df['name'] == auto_name)]['fuel_type'].iloc[0]
+                st.caption(
+                    f"🔎 Best-effort guess: **{top['brand']} {top['model']}** "
+                    f"(similarity {top['similarity']:.0%}) — auto-filled the closest match below, but please double-check it."
+                )
+            else:
+                st.caption(
+                    f"🔎 Best-effort guess: **{top['brand']} {top['model']}** "
+                    f"(similarity {top['similarity']:.0%}) — that brand isn't in our dataset, so nothing was auto-filled below. Please select the fields manually."
+                )
         else:
             st.caption("🔎 This doesn't look like a car photo — brand/model auto-detection skipped. Please select the fields below manually.")
 
