@@ -8,122 +8,104 @@ import streamlit as st
 from PIL import Image
 
 MODELS_DIR = "models"
+CLIP_MODEL_ID = "openai/clip-vit-base-patch32"
 
 TOP_K = 5
-MIN_MATCH_RATIO = 0.55
 
-# Substrings matched against ImageNet category names to gate the fine-grained
-# brand/model lookup -- avoids confidently "recognizing" a car in photos of
-# unrelated objects, since nearest-neighbor search always returns *something*.
-VEHICLE_KEYWORDS = [
-    "car", "truck", "van", "bus", "jeep", "limousine", "ambulance", "cab",
-    "wagon", "convertible", "racer", "trailer", "tow", "tractor", "moped",
-    "golfcart", "go-kart", "minibus", "wheel", "garbage truck", "fire engine",
-    "snowplow", "jinrikisha", "model t", "recreational vehicle", "school bus",
+# Zero-shot prompts for the "is this actually a car?" gate. CLIP scores the image
+# against both groups, so no separate classifier model is needed.
+VEHICLE_PROMPTS = [
+    "a photo of a car",
+    "a photo of a car parked outside",
+    "a photo of the front of a car",
+    "a photo of a van or SUV",
+]
+NON_VEHICLE_PROMPTS = [
+    "a photo of an object that is not a vehicle",
+    "a screenshot of a document or diagram",
+    "a photo of a person",
+    "a photo of a building or landscape",
+    "a photo of tools or hardware",
 ]
 
 
-def _get_preprocess():
-    from torchvision import transforms
-
-    return transforms.Compose([
-        transforms.Resize(256),
-        transforms.CenterCrop(224),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-    ])
-
-
 @st.cache_resource
-def load_backbone():
+def load_clip():
     import torch
-    from torchvision import models
+    from transformers import CLIPModel, CLIPProcessor
 
-    weights = models.MobileNet_V2_Weights.IMAGENET1K_V2
-    backbone = models.mobilenet_v2(weights=weights)
-    backbone.classifier = torch.nn.Identity()
-    backbone.eval()
-    return backbone
-
-
-@st.cache_resource
-def load_classifier_backbone():
-    from torchvision import models
-
-    weights = models.MobileNet_V2_Weights.IMAGENET1K_V2
-    backbone = models.mobilenet_v2(weights=weights)
-    backbone.eval()
-    return backbone, weights.meta["categories"]
-
-
-def looks_like_vehicle(image: Image.Image, top_k: int = 5) -> bool:
-    """Cheap sanity check: does the general ImageNet classifier think this photo
-    contains a vehicle at all? Prevents confidently guessing a car brand/model
-    for photos of unrelated objects."""
-    import torch
-
-    backbone, categories = load_classifier_backbone()
-    tensor = _get_preprocess()(image.convert("RGB")).unsqueeze(0)
-    with torch.no_grad():
-        logits = backbone(tensor)
-    top_indices = torch.topk(logits[0], top_k).indices.tolist()
-    top_labels = [categories[i].lower() for i in top_indices]
-    return any(keyword in label for label in top_labels for keyword in VEHICLE_KEYWORDS)
+    model = CLIPModel.from_pretrained(CLIP_MODEL_ID)
+    processor = CLIPProcessor.from_pretrained(CLIP_MODEL_ID)
+    model.eval()
+    return model, processor, torch
 
 
 @st.cache_resource
 def load_reference_data():
-    import pickle
-
-    with open(os.path.join(MODELS_DIR, "car_pca.pkl"), "rb") as f:
-        pca = pickle.load(f)
     ref_embeddings = np.load(os.path.join(MODELS_DIR, "car_reference_embeddings.npy"))
     ref_classes = np.load(os.path.join(MODELS_DIR, "car_reference_classes.npy"))
     with open(os.path.join(MODELS_DIR, "car_label_map.json"), encoding="utf-8") as f:
         label_map = {int(k): v for k, v in json.load(f).items()}
-    return pca, ref_embeddings, ref_classes, label_map
+    return ref_embeddings, ref_classes, label_map
 
 
-def _embed_image(image: Image.Image):
-    import torch
-
-    backbone = load_backbone()
-    tensor = _get_preprocess()(image.convert("RGB")).unsqueeze(0)
+def _embed_image(image: Image.Image) -> np.ndarray:
+    model, processor, torch = load_clip()
+    inputs = processor(images=[image.convert("RGB")], return_tensors="pt")
     with torch.no_grad():
-        vec = backbone(tensor).numpy()
-    return vec
+        out = model.get_image_features(**inputs)
+        # transformers 5.x returns a pooled output object; its pooler_output is
+        # already the projected CLIP image embedding.
+        feats = out if isinstance(out, torch.Tensor) else out.pooler_output
+    vec = feats[0].numpy()
+    return vec / np.linalg.norm(vec)
+
+
+@st.cache_data(show_spinner=False)
+def _embed_prompts(prompts: tuple) -> np.ndarray:
+    model, processor, torch = load_clip()
+    inputs = processor(text=list(prompts), return_tensors="pt", padding=True)
+    with torch.no_grad():
+        out = model.get_text_features(**inputs)
+        feats = out if isinstance(out, torch.Tensor) else out.pooler_output
+    vecs = feats.numpy()
+    return vecs / np.linalg.norm(vecs, axis=1, keepdims=True)
+
+
+def looks_like_vehicle(image: Image.Image) -> bool:
+    """Zero-shot check that the photo actually contains a car, so we don't confidently
+    name a car model for a photo of something else entirely."""
+    vec = _embed_image(image)
+    veh = _embed_prompts(tuple(VEHICLE_PROMPTS)) @ vec
+    non = _embed_prompts(tuple(NON_VEHICLE_PROMPTS)) @ vec
+    return float(veh.max()) > float(non.max())
 
 
 def recognize_brand_model(image: Image.Image):
-    """Best-effort recognition of the car's brand + model from a photo via nearest-neighbor
-    lookup against a reference set built from the brands in our own price dataset (a few
-    images per model). Accuracy is modest (few-shot over ~1,500 classes) -- treat results
-    as a starting suggestion, not a certain answer."""
-    pca, ref_embeddings, ref_classes, label_map = load_reference_data()
+    """Recognize the car's brand + model from a photo via nearest-neighbour lookup
+    against a reference set built from the brands in our own price dataset, using CLIP
+    image embeddings. Good but not perfect -- results are shown as a suggestion the
+    user can correct."""
+    ref_embeddings, ref_classes, label_map = load_reference_data()
     vec = _embed_image(image)
-    reduced = pca.transform(vec)
-    reduced = reduced / np.linalg.norm(reduced, axis=1, keepdims=True)
 
-    sims = (reduced @ ref_embeddings.T)[0]
+    sims = ref_embeddings @ vec
     top_idx = np.argsort(sims)[::-1][:TOP_K]
 
     results = []
     for i in top_idx:
-        cls = int(ref_classes[i])
-        info = label_map[cls]
+        info = label_map[int(ref_classes[i])]
         results.append({"brand": info["company"], "model": info["model"], "similarity": float(sims[i])})
     return results
 
 
 def match_to_price_dataset(brand: str, model: str, df: pd.DataFrame):
     """Map a recognized brand/model onto entries that actually exist in our price dataset,
-    so the UI can auto-select real dropdown options. The reference set is now keyed by our
-    own company names, so the brand is an exact match -- only the model needs fuzzy
-    matching against that brand's model names."""
+    so the UI can auto-select real dropdown options. The reference set is keyed by our own
+    company names, so the brand is an exact match -- only the model needs fuzzy matching
+    against that brand's model names."""
     companies = df["company"].unique().tolist()
     if brand not in companies:
-        # Reference set is built from our own brands, so this should be rare; fall back to
-        # a case-insensitive lookup rather than guessing a different brand entirely.
         lower_map = {c.lower(): c for c in companies}
         if brand.lower() not in lower_map:
             return None
