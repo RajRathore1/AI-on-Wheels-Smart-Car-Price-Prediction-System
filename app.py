@@ -1021,19 +1021,23 @@ elif page == "💰 Price Prediction":
     st.subheader("🚘 Enter Car Information")
     st.markdown("<div class='input-card'>", unsafe_allow_html=True)
 
-    companies = sorted(df['company'].unique())
     fuel_types = sorted(df['fuel_type'].unique())
 
     col1, col2 = st.columns(2)
-    with col1:
-        company = st.selectbox("Car Brand", companies)
-        # Dynamically filter car models based on the selected brand
-        valid_car_names = sorted(df[df['company'] == company]['name'].unique())
-        name = st.selectbox("Car Model Name", valid_car_names)
-        year = st.number_input("Year of Purchase", min_value=1995, max_value=2025, value=2019)
     with col2:
         kms_driven = st.number_input("Kilometers Driven", min_value=0, max_value=500000, value=100)
         fuel_type = st.selectbox("Fuel Type", fuel_types)
+
+    # Only offer brands/models that actually exist with the selected fuel type
+    fuel_filtered_df = df[df['fuel_type'] == fuel_type]
+
+    with col1:
+        companies = sorted(fuel_filtered_df['company'].unique())
+        company = st.selectbox("Car Brand", companies)
+        # Dynamically filter car models based on the selected brand + fuel type
+        valid_car_names = sorted(fuel_filtered_df[fuel_filtered_df['company'] == company]['name'].unique())
+        name = st.selectbox("Car Model Name", valid_car_names)
+        year = st.number_input("Year of Purchase", min_value=1995, max_value=2025, value=2019)
 
     st.markdown("</div>", unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
