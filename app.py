@@ -29,7 +29,7 @@ st.set_page_config(
     page_title="Car Price Predictor",
     page_icon="🚗",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="auto",  # collapsed on phones, expanded on desktop
 )
 
 # =============================================================
@@ -247,6 +247,75 @@ st.markdown(f"""
     }}
     .side-note {{ color: var(--text-muted); font-size: 0.8rem; line-height: 1.55; }}
 
+    /* ---------- Sidebar nav: icon-labelled radio row instead of a stacked
+       radio group, and full-width tap targets on touch screens ---------- */
+    [data-testid="stSidebar"] div[role="radiogroup"] label {{
+        display: flex; align-items: center; gap: 10px;
+        padding: 11px 14px;
+    }}
+    [data-testid="stSidebar"] div[role="radiogroup"] label p {{ font-size: 0.95rem; }}
+
+    /* ---------- Fluid type + spacing ---------- */
+    .page-title {{ font-size: clamp(1.5rem, 1.1rem + 1.6vw, 2.1rem); }}
+    .page-sub {{ font-size: clamp(0.9rem, 0.85rem + 0.3vw, 1rem); }}
+    .result-value {{ font-size: clamp(2rem, 1.5rem + 2vw, 3rem); word-break: break-word; }}
+    .step {{ font-size: clamp(1rem, 0.9rem + 0.4vw, 1.15rem); flex-wrap: wrap; }}
+
+    /* ---------- Responsive breakpoints ---------- */
+    @media (max-width: 900px) {{
+        .block-container {{ padding-left: 1rem; padding-right: 1rem; padding-top: 1.5rem; }}
+        .stat-card {{ padding: 16px 18px; }}
+        .result {{ padding: 22px 16px; }}
+        div[data-testid="stHorizontalBlock"] {{ flex-wrap: wrap; }}
+        div[data-testid="column"] {{ min-width: 100% !important; }}
+
+        /* Streamlit's sidebar shares flex space with the content even when the
+           user opens it on a phone, squeezing the page to a sliver. Taking it out
+           of flow makes it overlay on top instead, so the content underneath
+           keeps its full width regardless of whether the drawer is open. */
+        [data-testid="stSidebar"] {{
+            position: fixed !important;
+            top: 0; left: 0; height: 100vh !important;
+            z-index: 999;
+            box-shadow: 4px 0 28px rgba(0,0,0,0.55);
+        }}
+    }}
+    @media (max-width: 640px) {{
+        .step-num {{ width: 22px; height: 22px; font-size: 0.75rem; }}
+        .result-meta {{ font-size: 0.82rem; line-height: 1.6; }}
+        [data-testid="stMetricValue"] {{ font-size: 1.6rem; }}
+    }}
+
+    /* ---------- Tables & dataframes ---------- */
+    [data-testid="stDataFrame"] {{
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        overflow: hidden;
+    }}
+
+    /* ---------- Tabs ---------- */
+    div[data-baseweb="tab-list"] {{
+        overflow-x: auto; overflow-y: hidden; flex-wrap: nowrap;
+        scrollbar-width: thin;
+    }}
+    button[data-baseweb="tab"] {{
+        color: var(--text-muted) !important;
+        font-weight: 600;
+        white-space: nowrap;
+    }}
+    button[data-baseweb="tab"][aria-selected="true"] {{ color: var(--text) !important; }}
+    div[data-baseweb="tab-highlight"] {{ background-color: var(--accent) !important; }}
+    div[data-baseweb="tab-border"] {{ background-color: var(--border) !important; }}
+
+    /* ---------- Alerts ---------- */
+    div[data-testid="stAlert"] {{ border-radius: var(--radius); border: 1px solid var(--border); }}
+
+    /* ---------- Scrollbar ---------- */
+    ::-webkit-scrollbar {{ width: 10px; height: 10px; }}
+    ::-webkit-scrollbar-track {{ background: transparent; }}
+    ::-webkit-scrollbar-thumb {{ background: var(--surface-2); border-radius: 8px; }}
+    ::-webkit-scrollbar-thumb:hover {{ background: var(--border-strong); }}
+
     footer, #MainMenu {{ visibility: hidden; }}
     </style>
 """, unsafe_allow_html=True)
@@ -281,13 +350,20 @@ page = st.sidebar.radio(
 st.sidebar.markdown("<hr>", unsafe_allow_html=True)
 st.sidebar.markdown(
     f"""
-    <div class='side-note'>
-        <b style='color:#e8ecf3;'>About</b><br>
-        Valuations from {df.shape[0]:,} real listings across
-        {df['company'].nunique()} brands, with optional photo-based
-        damage and model detection.
+    <div class='card' style='padding:16px 18px;'>
+        <div style='font-weight:650; margin-bottom:6px;'>About this tool</div>
+        <div class='side-note'>
+            Valuations from {df.shape[0]:,} real listings across
+            {df['company'].nunique()} brands, with optional photo-based
+            damage and model detection.
+        </div>
     </div>
     """,
+    unsafe_allow_html=True,
+)
+st.sidebar.markdown(
+    "<div class='side-note' style='text-align:center; margin-top:18px; opacity:0.7;'>"
+    "Built with Streamlit · scikit-learn · CLIP</div>",
     unsafe_allow_html=True,
 )
 
